@@ -555,7 +555,7 @@
 
         entries.forEach((person, index) => {
           const y = margin.top + index * rowHeight + 8;
-          chart.append(svgEl('text', { x: margin.left - 10, y: y + 13, 'text-anchor': 'end', class: 'svg-label-strong' }, person.label));
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 13, 'text-anchor': 'end', class: 'svg-label-strong' }, `${person.label}・${person.sex === 'female' ? '女' : '男'}`));
           chart.append(svgEl('text', { x: margin.left - 10, y: y + 28, 'text-anchor': 'end', class: 'svg-label-small' }, `${person.birthYear}年生`));
           buildPeriods(person.birthYear, sexDef(person.sex)).filter((period) => period.year >= startYear && period.year <= targetYear + 1).forEach((period) => {
             const tooltip = `${person.label}・${person.birthYear}年生・${sexDef(person.sex).label} ${period.year}年: 数え${period.age}歳 ${phases[period.phase]}`;
@@ -609,7 +609,7 @@
 
         entries.forEach((person, index) => {
           const y = margin.top + index * rowHeight + 8;
-          chart.append(svgEl('text', { x: margin.left - 10, y: y + 13, 'text-anchor': 'end', class: 'svg-label-strong' }, person.label));
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 13, 'text-anchor': 'end', class: 'svg-label-strong' }, `${person.label}・${person.sex === 'female' ? '女' : '男'}`));
           chart.append(svgEl('text', { x: margin.left - 10, y: y + 28, 'text-anchor': 'end', class: 'svg-label-small' }, `${person.birthYear}年生`));
           buildPeriods(person.birthYear, sexDef(person.sex)).filter((period) => period.year >= minYear && period.year <= maxYear).forEach((period) => {
             const rectWidth = Math.max(2, yearWidth - Math.min(2, yearWidth * 0.12));
@@ -700,10 +700,10 @@
         const streak = relevantStreak(buildStreaks(entries), targetYear);
         const births = entries.map((person) => person.birthYear);
         const targetSummary = targetActive.length
-          ? targetActive.map((person) => `${person.label} ${phases[person.period.phase]}`).join('・')
+          ? targetActive.map((person) => `${person.label}（${person.sex === 'female' ? '女' : '男'}）${phases[person.period.phase]}`).join('・')
           : '該当者はいません';
         const currentSummary = currentActive.length
-          ? currentActive.map((person) => `${person.label} ${phases[person.period.phase]}`).join('・')
+          ? currentActive.map((person) => `${person.label}（${person.sex === 'female' ? '女' : '男'}）${phases[person.period.phase]}`).join('・')
           : '今年の該当者はいません';
 
         $('#metric1Label').textContent = '登録人数';
