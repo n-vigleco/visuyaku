@@ -4,13 +4,13 @@
 
 厄年を、見える形に。
 
-生年月日から数え年を計算し、男性・女性の前厄・本厄・後厄を同じ時間軸で比較できる静的Webアプリです。
+生まれ年から数え年を計算し、男性・女性の前厄・本厄・後厄を同じ時間軸で比較できる静的Webアプリです。
 
 **公開URL:** [https://tmp.vigle.co/visuyaku/](https://tmp.vigle.co/visuyaku/)
 
 ## 主な機能
 
-- 生年月日と性別から対象年の数え年を計算
+- 生まれ年と性別から対象年の数え年を計算
 - 男性・女性の厄年を同じグラフに表示
 - 前後1年を月単位で表示
 - 前後12年、80歳までの長期表示
@@ -28,7 +28,7 @@
 
 | パラメータ | 内容 | 例 |
 | --- | --- | --- |
-| `birthdate` | 生年月日 | `1990-04-01` |
+| `birthyear` | 生まれ年 | `1990` |
 | `sex` | `male` または `female` | `male` |
 | `year` | グラフの基準年 | `2026` |
 | `view` | `1y`、`12y`、`80y` | `1y` |
@@ -36,8 +36,10 @@
 例:
 
 ```text
-https://tmp.vigle.co/visuyaku/?birthdate=1990-04-01&sex=male&year=2026&view=1y
+https://tmp.vigle.co/visuyaku/?birthyear=1990&sex=male&year=2026&view=1y
 ```
+
+以前の `birthdate` および `dob` パラメータも読み込み可能ですが、共有URLは `birthyear` に統一されます。
 
 ## ローカル開発
 

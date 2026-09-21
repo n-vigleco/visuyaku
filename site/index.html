@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="生年月日から数え年の厄年を計算し、男性・女性の前厄、本厄、後厄を同じグラフで比較できます。">
+  <meta name="description" content="生まれ年から数え年の厄年を計算し、男性・女性の前厄、本厄、後厄を同じグラフで比較できます。">
   <meta name="theme-color" content="#0e786f">
   <title>visuyaku | 厄年を、見える形に。</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e786f'/%3E%3Cpath d='M13 20h38M13 32h38M13 44h38' stroke='%23fff' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23f2b544'/%3E%3C/svg%3E">
@@ -88,6 +88,7 @@
     .target-line { stroke: var(--ink); stroke-width: 2; }
     .current-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
     .svg-label { fill: var(--ink); font-size: 12px; }
+    .svg-label-small { fill: var(--ink); font-size: 10px; }
     .svg-label-strong { fill: var(--ink); font-size: 12px; font-weight: 700; }
     .svg-muted { fill: var(--muted); font-size: 12px; }
     .axis-title { fill: var(--muted); font-size: 12px; }
@@ -135,7 +136,7 @@
     <section class="workspace" aria-label="厄年計算機">
       <div class="control-band">
         <div class="controls">
-          <label>生年月日<input id="birthdate" type="date" value="1990-04-01"></label>
+          <label>生まれ年<input id="birthyear" type="number" inputmode="numeric" value="1990"></label>
           <label>本人の性別<select id="sex"><option value="male">男性</option><option value="female">女性</option></select></label>
           <label>基準年<input id="targetYear" type="number" inputmode="numeric" value="2026"></label>
         </div>
@@ -170,8 +171,8 @@
       </div>
 
       <footer class="notes">
-        <p>厄年は数え年による一般的な目安です。時期や年齢の扱いは地域・神社・寺院によって異なるため、お参り先の案内もあわせてご確認ください。</p>
-        <p class="url-params"><code>?birthdate=&amp;sex=&amp;year=&amp;view=</code></p>
+        <p>厄年は誕生日ではなく、数え年に基づいて生まれ年単位で判定します。時期や年齢の扱いは地域・神社・寺院によって異なるため、お参り先の案内もあわせてご確認ください。</p>
+        <p class="url-params"><code>?birthyear=&amp;sex=&amp;year=&amp;view=</code></p>
       </footer>
     </section>
   </main>
@@ -180,7 +181,7 @@
   <script>
     (() => {
       const $ = (selector) => document.querySelector(selector);
-      const birthInput = $('#birthdate');
+      const birthInput = $('#birthyear');
       const sexInput = $('#sex');
       const yearInput = $('#targetYear');
       const chart = $('#chart');
@@ -200,12 +201,6 @@
       const phaseClass = { mae: 'phase-mae', hon: 'phase-hon', ato: 'phase-ato' };
       const viewAliases = { near: 'near', '1y': 'near', '3y': 'near', wide: 'wide', '12y': 'wide', '25y': 'wide', life: 'life', '80y': 'life' };
 
-      function parseDate(value) {
-        const parts = value.split('-').map(Number);
-        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
-        const date = new Date(parts[0], parts[1] - 1, parts[2]);
-        return date.getFullYear() === parts[0] && date.getMonth() === parts[1] - 1 && date.getDate() === parts[2] ? date : null;
-      }
       function formatDate(date) {
         return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
       }
@@ -224,7 +219,8 @@
       }
       function loadUrl() {
         const params = new URLSearchParams(location.search);
-        const birth = params.get('birthdate') || params.get('dob');
+        const legacyBirth = params.get('birthdate') || params.get('dob') || '';
+        const birth = params.get('birthyear') || legacyBirth.match(/^\d{4}/)?.[0];
         const sex = params.get('sex');
         const yearRaw = params.get('year');
         if (birth) birthInput.value = birth;
@@ -235,16 +231,17 @@
       }
       function updateUrl() {
         const url = new URL(location.href);
-        url.searchParams.set('birthdate', birthInput.value);
+        url.searchParams.set('birthyear', birthInput.value);
+        url.searchParams.delete('birthdate');
+        url.searchParams.delete('dob');
         url.searchParams.set('sex', sexInput.value);
         url.searchParams.set('year', yearInput.value);
         url.searchParams.set('view', view === 'near' ? '1y' : view === 'wide' ? '12y' : '80y');
         history.replaceState(null, '', url);
       }
       function normalizeYear() {
-        const birth = parseDate(birthInput.value);
-        if (!birth) return;
-        const min = birth.getFullYear();
+        const min = Number(birthInput.value);
+        if (!Number.isInteger(min)) return;
         const max = min + 79;
         yearInput.min = min;
         yearInput.max = max;
@@ -292,9 +289,13 @@
           const y = rowY[sex.key];
           chart.append(svgEl('text', { x: margin.left - 10, y: y + 23, 'text-anchor': 'end', class: sex.key === sexInput.value ? 'svg-label-strong' : 'svg-label' }, sex.label));
           buildPeriods(birthYear, sex).filter((period) => period.year >= startYear && period.year <= targetYear + 1).forEach((period) => {
-            const rect = appendTitle(svgEl('rect', { x: xMonth(period.year, 0) + 1, y, width: monthWidth * 12 - 2, height: 36, rx: 3, class: phaseClass[period.phase] }), `${sex.label} ${period.year}年1月〜12月: 数え${period.age}歳 ${phases[period.phase]}（${period.honAge}歳本厄）`);
+            const tooltip = `${birthYear}年生・${sex.label} ${period.year}年1月〜12月: 数え${period.age}歳 ${phases[period.phase]}（${period.honAge}歳本厄）`;
+            const rect = appendTitle(svgEl('rect', { x: xMonth(period.year, 0) + 1, y, width: monthWidth * 12 - 2, height: 36, rx: 3, class: phaseClass[period.phase] }), tooltip);
             chart.append(rect);
-            if (monthWidth * 12 >= 46) chart.append(svgEl('text', { x: xMonth(period.year, 6), y: y + 23, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phases[period.phase]));
+            if (monthWidth * 12 >= 64) {
+              chart.append(svgEl('text', { x: xMonth(period.year, 6), y: y + 15, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phases[period.phase]));
+              chart.append(svgEl('text', { x: xMonth(period.year, 6), y: y + 29, 'text-anchor': 'middle', class: 'svg-label-small', 'pointer-events': 'none' }, `（${birthYear}年生）`));
+            }
           });
         });
 
@@ -348,10 +349,11 @@
         });
         sexes.forEach((sex) => {
           const y = rowY[sex.key];
-          chart.append(svgEl('text', { x: margin.left - 10, y: y + 23, 'text-anchor': 'end', class: sex.key === sexInput.value ? 'svg-label-strong' : 'svg-label' }, sex.label));
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 16, 'text-anchor': 'end', class: sex.key === sexInput.value ? 'svg-label-strong' : 'svg-label' }, sex.label));
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 31, 'text-anchor': 'end', class: 'svg-label-small' }, `${birthYear}年生`));
           buildPeriods(birthYear, sex).filter((period) => period.year >= minYear && period.year <= maxYear).forEach((period) => {
             const rectWidth = Math.max(2, yearWidth - Math.min(2, yearWidth * 0.12));
-            const rect = appendTitle(svgEl('rect', { x: xYear(period.year) + Math.min(1, yearWidth * 0.06), y, width: rectWidth, height: 36, rx: Math.min(3, rectWidth / 3), class: phaseClass[period.phase] }), `${sex.label} ${period.year}年: 数え${period.age}歳 ${phases[period.phase]}（${period.honAge}歳本厄）`);
+            const rect = appendTitle(svgEl('rect', { x: xYear(period.year) + Math.min(1, yearWidth * 0.06), y, width: rectWidth, height: 36, rx: Math.min(3, rectWidth / 3), class: phaseClass[period.phase] }), `${birthYear}年生・${sex.label} ${period.year}年: 数え${period.age}歳 ${phases[period.phase]}（${period.honAge}歳本厄）`);
             chart.append(rect);
             if (yearWidth >= 25) chart.append(svgEl('text', { x: xYear(period.year) + yearWidth / 2, y: y + 23, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phaseShort[period.phase]));
           });
@@ -372,11 +374,11 @@
       }
 
       function draw() {
-        const birth = parseDate(birthInput.value);
         const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        if (!birth) { $('#error').textContent = '生年月日を入力してください。'; chart.replaceChildren(); return; }
-        if (birth > currentDate) { $('#error').textContent = '未来の生年月日は計算できません。'; chart.replaceChildren(); return; }
-        const birthYear = birth.getFullYear();
+        const birthYear = Number(birthInput.value);
+        if (!Number.isInteger(birthYear)) { $('#error').textContent = '生まれ年を入力してください。'; chart.replaceChildren(); return; }
+        if (birthYear > currentYear) { $('#error').textContent = '未来の生まれ年は計算できません。'; chart.replaceChildren(); return; }
+        if (birthYear < currentYear - 120) { $('#error').textContent = `${currentYear - 120}年以降で入力してください。`; chart.replaceChildren(); return; }
         const targetYear = Number(yearInput.value);
         if (!Number.isInteger(targetYear) || targetYear < birthYear || targetYear > birthYear + 79) {
           $('#error').textContent = `基準年は${birthYear}〜${birthYear + 79}年で入力してください。`;
@@ -394,13 +396,15 @@
         $('#statusNote').textContent = currentStatus ? `${selected.label}・${currentStatus.honAge}歳本厄の周辺` : `${selected.label}・主な厄年には該当しません`;
         $('#targetStatus').textContent = targetStatus ? phases[targetStatus.phase] : '通常年';
         $('#targetNote').textContent = `${targetYear}年・数え${targetYear - birthYear + 1}歳・${selected.label}`;
-        $('#detail').textContent = `${selected.label}の判定を上に表示し、グラフでは同じ生まれ年の男性・女性を比較しています。`;
+        $('#detail').textContent = `${birthYear}年生・${selected.label}の判定を上に表示し、グラフでは同じ生まれ年の男性・女性を比較しています。生まれ月による違いはありません。`;
         const width = Math.max(320, Math.floor(chartWrap.getBoundingClientRect().width));
         if (view === 'near') drawMonthChart(birthYear, targetYear, width); else drawYearChart(birthYear, targetYear, width);
       }
       function update() { normalizeYear(); draw(); updateUrl(); }
 
       yearInput.value = String(currentYear);
+      birthInput.min = String(currentYear - 120);
+      birthInput.max = String(currentYear);
       loadUrl();
       normalizeYear();
       draw();
