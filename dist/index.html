@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="生年月日から数え年の厄年を計算し、男性・女性の前厄、本厄、後厄を同じグラフで比較できます。">
+  <meta name="theme-color" content="#0e786f">
+  <title>visuyaku | 厄年を、見える形に。</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e786f'/%3E%3Cpath d='M13 20h38M13 32h38M13 44h38' stroke='%23fff' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23f2b544'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f8f5;
+      --surface: #ffffff;
+      --ink: #17211f;
+      --muted: #65706d;
+      --line: #d8dedb;
+      --soft: #edf1ef;
+      --teal: #0e786f;
+      --teal-soft: #dcefeb;
+      --amber: #f2b544;
+      --amber-soft: #fbe8ba;
+      --coral: #dd6b57;
+      --coral-soft: #f4d8d2;
+      --shadow: 0 14px 40px rgba(28, 45, 41, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { font-family: Inter, "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", sans-serif; background: var(--paper); color: var(--ink); }
+    body { margin: 0; min-width: 320px; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    button, select, input { min-height: 44px; }
+    button { cursor: pointer; }
+
+    .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 40px; }
+    .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .brand-mark { width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; background: var(--teal); color: #fff; font-weight: 700; }
+    .brand-name { margin: 0; font-size: 1.35rem; line-height: 1.2; letter-spacing: 0; }
+    .brand-copy { margin: 2px 0 0; color: var(--muted); font-size: 0.82rem; }
+    .share-button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 0 14px; font-weight: 600; }
+    .share-button:hover { background: var(--soft); }
+    .share-button:focus-visible, input:focus-visible, select:focus-visible, .range-button:focus-visible { outline: 3px solid rgba(14, 120, 111, 0.23); outline-offset: 2px; }
+
+    .workspace { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+    .control-band { padding: 22px; border-bottom: 1px solid var(--line); }
+    .controls { display: grid; grid-template-columns: minmax(210px, 1.2fr) minmax(150px, 0.7fr) minmax(140px, 0.6fr); gap: 14px; }
+    label { display: grid; gap: 7px; color: var(--muted); font-size: 0.88rem; font-weight: 600; }
+    input, select { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); padding: 9px 11px; }
+    input:hover, select:hover { border-color: #aeb9b5; }
+    .error { min-height: 1.35em; margin: 9px 0 0; color: #b33b2d; font-size: 0.88rem; }
+
+    .result-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+    .result { padding: 18px 22px; min-width: 0; }
+    .result + .result { border-left: 1px solid var(--line); }
+    .result-label { color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+    .result-value { margin-top: 5px; font-size: clamp(1.3rem, 2.4vw, 2rem); line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .result-note { margin-top: 5px; color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+
+    .chart-section { padding: 22px; }
+    .chart-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .range-control { display: inline-flex; padding: 3px; border-radius: 7px; background: var(--soft); gap: 2px; }
+    .range-button { min-height: 38px; border: 0; border-radius: 5px; padding: 0 13px; background: transparent; color: var(--muted); font-weight: 650; }
+    .range-button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 5px rgba(28, 45, 41, 0.12); }
+    .range-label { color: var(--muted); font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+    .chart-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .chart-heading h2 { margin: 0; font-size: 1.05rem; }
+    .chart-caption { color: var(--muted); font-size: 0.82rem; }
+    .chart-wrap { position: relative; width: 100%; min-height: 265px; }
+    #chart { display: block; width: 100%; height: auto; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 10px; color: var(--muted); font-size: 0.82rem; }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+    .swatch { width: 20px; height: 10px; border-radius: 2px; }
+    .swatch-mae { background: var(--teal-soft); }
+    .swatch-hon { background: var(--amber); }
+    .swatch-ato { background: var(--coral-soft); }
+    .line-key { width: 20px; height: 12px; border-left: 2px solid var(--ink); }
+    .line-key-current { border-left: 1px dashed var(--muted); }
+    .detail { margin: 14px 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+
+    .plot-frame { fill: none; stroke: var(--line); stroke-width: 1; }
+    .grid-line { stroke: var(--line); stroke-width: 1; }
+    .year-line { stroke: #b8c2be; stroke-width: 1.2; }
+    .target-band { fill: rgba(14, 120, 111, 0.055); }
+    .phase-mae { fill: var(--teal-soft); }
+    .phase-hon { fill: var(--amber); }
+    .phase-ato { fill: var(--coral-soft); }
+    .target-line { stroke: var(--ink); stroke-width: 2; }
+    .current-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .svg-label { fill: var(--ink); font-size: 12px; }
+    .svg-label-strong { fill: var(--ink); font-size: 12px; font-weight: 700; }
+    .svg-muted { fill: var(--muted); font-size: 12px; }
+    .axis-title { fill: var(--muted); font-size: 12px; }
+
+    .notes { display: flex; justify-content: space-between; gap: 24px; padding: 18px 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.78rem; line-height: 1.65; }
+    .notes p { margin: 0; max-width: 680px; }
+    .url-params { text-align: right; white-space: nowrap; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--ink); }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(12px); background: var(--ink); color: #fff; border-radius: 6px; padding: 10px 14px; opacity: 0; pointer-events: none; transition: opacity 160ms ease, transform 160ms ease; font-size: 0.88rem; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 20px, 1120px); padding-top: 18px; }
+      .masthead { align-items: flex-start; }
+      .brand-copy { display: none; }
+      .controls, .result-strip { grid-template-columns: 1fr; }
+      .result + .result { border-left: 0; border-top: 1px solid var(--line); }
+      .control-band, .chart-section { padding: 18px; }
+      .result { padding: 15px 18px; }
+      .range-control { width: 100%; }
+      .range-button { flex: 1; padding-inline: 8px; }
+      .notes { display: block; padding: 16px 18px; }
+      .url-params { display: none; }
+    }
+    @media (max-width: 420px) {
+      .shell { width: 100%; padding: 0; }
+      .masthead { padding: 14px 12px; margin: 0; background: var(--surface); border-bottom: 1px solid var(--line); }
+      .workspace { border-width: 0; border-radius: 0; box-shadow: none; }
+      .share-button { padding-inline: 11px; }
+      .control-band, .chart-section { padding: 16px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">V</div>
+        <div><h1 class="brand-name">visuyaku</h1><p class="brand-copy">厄年を、見える形に。</p></div>
+      </div>
+      <button id="share" class="share-button" type="button">URLをコピー</button>
+    </header>
+
+    <section class="workspace" aria-label="厄年計算機">
+      <div class="control-band">
+        <div class="controls">
+          <label>生年月日<input id="birthdate" type="date" value="1990-04-01"></label>
+          <label>本人の性別<select id="sex"><option value="male">男性</option><option value="female">女性</option></select></label>
+          <label>基準年<input id="targetYear" type="number" inputmode="numeric" value="2026"></label>
+        </div>
+        <p id="error" class="error" role="alert"></p>
+      </div>
+
+      <div class="result-strip" aria-live="polite">
+        <div class="result"><div class="result-label">現在の数え年</div><div id="age" class="result-value">-</div><div id="date" class="result-note">-</div></div>
+        <div class="result"><div class="result-label">現在地</div><div id="status" class="result-value">-</div><div id="statusNote" class="result-note">-</div></div>
+        <div class="result"><div class="result-label">基準年の判定</div><div id="targetStatus" class="result-value">-</div><div id="targetNote" class="result-note">-</div></div>
+      </div>
+
+      <div class="chart-section">
+        <div class="chart-toolbar">
+          <div class="range-control" role="group" aria-label="表示範囲">
+            <button class="range-button" type="button" aria-pressed="true" data-view="near">前後1年</button>
+            <button class="range-button" type="button" aria-pressed="false" data-view="wide">前後12年</button>
+            <button class="range-button" type="button" aria-pressed="false" data-view="life">80歳まで</button>
+          </div>
+          <div id="rangeLabel" class="range-label">-</div>
+        </div>
+        <div class="chart-heading"><h2>男女の厄年タイムライン</h2><span id="unitLabel" class="chart-caption">月単位</span></div>
+        <div id="chartWrap" class="chart-wrap"><svg id="chart" role="img" aria-labelledby="chartTitle chartDesc"></svg></div>
+        <div class="legend" aria-label="凡例">
+          <span class="legend-item"><span class="swatch swatch-mae"></span>前厄</span>
+          <span class="legend-item"><span class="swatch swatch-hon"></span>本厄</span>
+          <span class="legend-item"><span class="swatch swatch-ato"></span>後厄</span>
+          <span class="legend-item"><span class="line-key"></span>基準年</span>
+          <span class="legend-item"><span class="line-key line-key-current"></span>今日</span>
+        </div>
+        <p id="detail" class="detail"></p>
+      </div>
+
+      <footer class="notes">
+        <p>厄年は数え年による一般的な目安です。時期や年齢の扱いは地域・神社・寺院によって異なるため、お参り先の案内もあわせてご確認ください。</p>
+        <p class="url-params"><code>?birthdate=&amp;sex=&amp;year=&amp;view=</code></p>
+      </footer>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite">URLをコピーしました</div>
+
+  <script>
+    (() => {
+      const $ = (selector) => document.querySelector(selector);
+      const birthInput = $('#birthdate');
+      const sexInput = $('#sex');
+      const yearInput = $('#targetYear');
+      const chart = $('#chart');
+      const chartWrap = $('#chartWrap');
+      const buttons = [...document.querySelectorAll('[data-view]')];
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      let view = 'near';
+      let toastTimer;
+
+      const sexes = [
+        { key: 'male', label: '男性', ages: [25, 42, 61] },
+        { key: 'female', label: '女性', ages: [19, 33, 37, 61] }
+      ];
+      const phases = { mae: '前厄', hon: '本厄', ato: '後厄' };
+      const phaseShort = { mae: '前', hon: '本', ato: '後' };
+      const phaseClass = { mae: 'phase-mae', hon: 'phase-hon', ato: 'phase-ato' };
+      const viewAliases = { near: 'near', '1y': 'near', '3y': 'near', wide: 'wide', '12y': 'wide', '25y': 'wide', life: 'life', '80y': 'life' };
+
+      function parseDate(value) {
+        const parts = value.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        return date.getFullYear() === parts[0] && date.getMonth() === parts[1] - 1 && date.getDate() === parts[2] ? date : null;
+      }
+      function formatDate(date) {
+        return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+      }
+      function sexDef(key) { return sexes.find((item) => item.key === key) || sexes[0]; }
+      function buildPeriods(birthYear, sex) {
+        return sex.ages.flatMap((honAge) => [
+          { age: honAge - 1, phase: 'mae', honAge, year: birthYear + honAge - 2 },
+          { age: honAge, phase: 'hon', honAge, year: birthYear + honAge - 1 },
+          { age: honAge + 1, phase: 'ato', honAge, year: birthYear + honAge }
+        ]);
+      }
+      function statusFor(periods, year) { return periods.find((item) => item.year === year) || null; }
+      function setView(next) {
+        view = viewAliases[next] || 'near';
+        buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+      }
+      function loadUrl() {
+        const params = new URLSearchParams(location.search);
+        const birth = params.get('birthdate') || params.get('dob');
+        const sex = params.get('sex');
+        const yearRaw = params.get('year');
+        if (birth) birthInput.value = birth;
+        if (['male', 'm', '男性'].includes(sex)) sexInput.value = 'male';
+        if (['female', 'f', '女性'].includes(sex)) sexInput.value = 'female';
+        if (yearRaw !== null && Number.isInteger(Number(yearRaw))) yearInput.value = yearRaw;
+        if (viewAliases[params.get('view')]) setView(params.get('view'));
+      }
+      function updateUrl() {
+        const url = new URL(location.href);
+        url.searchParams.set('birthdate', birthInput.value);
+        url.searchParams.set('sex', sexInput.value);
+        url.searchParams.set('year', yearInput.value);
+        url.searchParams.set('view', view === 'near' ? '1y' : view === 'wide' ? '12y' : '80y');
+        history.replaceState(null, '', url);
+      }
+      function normalizeYear() {
+        const birth = parseDate(birthInput.value);
+        if (!birth) return;
+        const min = birth.getFullYear();
+        const max = min + 79;
+        yearInput.min = min;
+        yearInput.max = max;
+        const value = Number(yearInput.value);
+        if (!Number.isInteger(value) || value < min || value > max) yearInput.value = String(Math.min(max, Math.max(min, currentYear)));
+      }
+      function svgEl(name, attrs, text) {
+        const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+        Object.entries(attrs || {}).forEach(([key, value]) => node.setAttribute(key, value));
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+      function appendTitle(node, text) { node.appendChild(svgEl('title', {}, text)); return node; }
+
+      function drawMonthChart(birthYear, targetYear, width) {
+        const compact = width < 520;
+        const margin = { top: 42, right: 16, bottom: 62, left: compact ? 58 : 72 };
+        const plotHeight = 140;
+        const height = margin.top + plotHeight + margin.bottom;
+        const innerWidth = width - margin.left - margin.right;
+        const startYear = targetYear - 1;
+        const monthWidth = innerWidth / 36;
+        const xMonth = (year, month) => margin.left + ((year - startYear) * 12 + month) * monthWidth;
+        const rowY = { male: margin.top + 18, female: margin.top + 84 };
+        chart.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        chart.replaceChildren();
+        chart.append(svgEl('title', { id: 'chartTitle' }, '前後1年を月単位で見る男女の厄年'));
+        chart.append(svgEl('desc', { id: 'chartDesc' }, `${startYear}年1月から${targetYear + 1}年12月までを月単位で表示します。`));
+        chart.append(svgEl('rect', { x: xMonth(targetYear, 0), y: margin.top, width: monthWidth * 12, height: plotHeight, class: 'target-band' }));
+        chart.append(svgEl('rect', { x: margin.left, y: margin.top, width: innerWidth, height: plotHeight, class: 'plot-frame' }));
+
+        for (let index = 0; index <= 36; index += 1) {
+          const x = margin.left + index * monthWidth;
+          const isYear = index % 12 === 0;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top, y2: margin.top + plotHeight, class: isYear ? 'year-line' : 'grid-line' }));
+          if (index < 36) {
+            const month = index % 12;
+            const year = startYear + Math.floor(index / 12);
+            const showMonth = compact ? month === 0 || month === 6 : month % 3 === 0;
+            if (showMonth) chart.append(svgEl('text', { x: x + monthWidth / 2, y: height - 31, 'text-anchor': 'middle', class: 'svg-muted' }, month === 0 ? `${year}年` : `${month + 1}月`));
+          }
+        }
+
+        sexes.forEach((sex) => {
+          const y = rowY[sex.key];
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 23, 'text-anchor': 'end', class: sex.key === sexInput.value ? 'svg-label-strong' : 'svg-label' }, sex.label));
+          buildPeriods(birthYear, sex).filter((period) => period.year >= startYear && period.year <= targetYear + 1).forEach((period) => {
+            const rect = appendTitle(svgEl('rect', { x: xMonth(period.year, 0) + 1, y, width: monthWidth * 12 - 2, height: 36, rx: 3, class: phaseClass[period.phase] }), `${sex.label} ${period.year}年1月〜12月: 数え${period.age}歳 ${phases[period.phase]}（${period.honAge}歳本厄）`);
+            chart.append(rect);
+            if (monthWidth * 12 >= 46) chart.append(svgEl('text', { x: xMonth(period.year, 6), y: y + 23, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phases[period.phase]));
+          });
+        });
+
+        const targetX = xMonth(targetYear, 0);
+        chart.append(svgEl('line', { x1: targetX, x2: targetX, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'target-line' }));
+        chart.append(svgEl('text', { x: targetX + 6, y: margin.top - 17, 'text-anchor': 'start', class: 'svg-label-strong' }, `基準年 ${targetYear}`));
+        if (currentYear >= startYear && currentYear <= targetYear + 1) {
+          const dayFraction = (today.getDate() - 1) / new Date(currentYear, today.getMonth() + 1, 0).getDate();
+          const currentX = xMonth(currentYear, today.getMonth() + dayFraction);
+          chart.append(svgEl('line', { x1: currentX, x2: currentX, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'current-line' }));
+          chart.append(svgEl('text', { x: Math.min(width - margin.right, currentX + 6), y: margin.top + plotHeight + 17, 'text-anchor': currentX > width - margin.right - 38 ? 'end' : 'start', class: 'svg-muted' }, '今日'));
+        }
+        chart.append(svgEl('text', { x: margin.left + innerWidth / 2, y: height - 5, 'text-anchor': 'middle', class: 'axis-title' }, '年月'));
+        $('#rangeLabel').textContent = `${startYear}年1月〜${targetYear + 1}年12月`;
+        $('#unitLabel').textContent = '月単位';
+      }
+
+      function yearTicks(minYear, maxYear, width) {
+        const span = maxYear - minYear;
+        const raw = Math.ceil(span / ((width < 520 ? 4 : 8) - 1));
+        const step = [1, 2, 5, 10, 20].find((value) => value >= raw) || 20;
+        const ticks = [];
+        for (let year = Math.ceil(minYear / step) * step; year <= maxYear; year += step) ticks.push(year);
+        if (!ticks.includes(minYear)) ticks.unshift(minYear);
+        if (!ticks.includes(maxYear)) ticks.push(maxYear);
+        return ticks;
+      }
+
+      function drawYearChart(birthYear, targetYear, width) {
+        const compact = width < 520;
+        const margin = { top: 42, right: 16, bottom: 58, left: compact ? 58 : 72 };
+        const plotHeight = 140;
+        const height = margin.top + plotHeight + margin.bottom;
+        const innerWidth = width - margin.left - margin.right;
+        const minYear = view === 'wide' ? targetYear - 12 : birthYear;
+        const maxYear = view === 'wide' ? targetYear + 12 : birthYear + 79;
+        const count = maxYear - minYear + 1;
+        const yearWidth = innerWidth / count;
+        const xYear = (year) => margin.left + (year - minYear) * yearWidth;
+        const rowY = { male: margin.top + 18, female: margin.top + 84 };
+        chart.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        chart.replaceChildren();
+        chart.append(svgEl('title', { id: 'chartTitle' }, '男女の厄年タイムライン'));
+        chart.append(svgEl('desc', { id: 'chartDesc' }, `${minYear}年から${maxYear}年までの男性と女性の厄年を比較します。`));
+        if (targetYear >= minYear && targetYear <= maxYear) chart.append(svgEl('rect', { x: xYear(targetYear), y: margin.top, width: yearWidth, height: plotHeight, class: 'target-band' }));
+        chart.append(svgEl('rect', { x: margin.left, y: margin.top, width: innerWidth, height: plotHeight, class: 'plot-frame' }));
+        yearTicks(minYear, maxYear, width).forEach((year) => {
+          const x = xYear(year) + yearWidth / 2;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top, y2: margin.top + plotHeight, class: 'grid-line' }));
+          chart.append(svgEl('text', { x, y: height - 28, 'text-anchor': year === minYear ? 'start' : year === maxYear ? 'end' : 'middle', class: 'svg-muted' }, String(year)));
+        });
+        sexes.forEach((sex) => {
+          const y = rowY[sex.key];
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 23, 'text-anchor': 'end', class: sex.key === sexInput.value ? 'svg-label-strong' : 'svg-label' }, sex.label));
+          buildPeriods(birthYear, sex).filter((period) => period.year >= minYear && period.year <= maxYear).forEach((period) => {
+            const rectWidth = Math.max(2, yearWidth - Math.min(2, yearWidth * 0.12));
+            const rect = appendTitle(svgEl('rect', { x: xYear(period.year) + Math.min(1, yearWidth * 0.06), y, width: rectWidth, height: 36, rx: Math.min(3, rectWidth / 3), class: phaseClass[period.phase] }), `${sex.label} ${period.year}年: 数え${period.age}歳 ${phases[period.phase]}（${period.honAge}歳本厄）`);
+            chart.append(rect);
+            if (yearWidth >= 25) chart.append(svgEl('text', { x: xYear(period.year) + yearWidth / 2, y: y + 23, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phaseShort[period.phase]));
+          });
+        });
+        if (targetYear >= minYear && targetYear <= maxYear) {
+          const x = xYear(targetYear) + yearWidth / 2;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'target-line' }));
+          chart.append(svgEl('text', { x: Math.min(width - margin.right, x + 5), y: margin.top - 17, 'text-anchor': x > width - margin.right - 44 ? 'end' : 'start', class: 'svg-label-strong' }, '基準年'));
+        }
+        if (currentYear !== targetYear && currentYear >= minYear && currentYear <= maxYear) {
+          const x = xYear(currentYear) + yearWidth / 2;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'current-line' }));
+          chart.append(svgEl('text', { x: Math.min(width - margin.right, x + 5), y: margin.top + plotHeight + 17, 'text-anchor': x > width - margin.right - 32 ? 'end' : 'start', class: 'svg-muted' }, '今年'));
+        }
+        chart.append(svgEl('text', { x: margin.left + innerWidth / 2, y: height - 5, 'text-anchor': 'middle', class: 'axis-title' }, '西暦（年）'));
+        $('#rangeLabel').textContent = `${minYear}〜${maxYear}年`;
+        $('#unitLabel').textContent = '年単位';
+      }
+
+      function draw() {
+        const birth = parseDate(birthInput.value);
+        const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (!birth) { $('#error').textContent = '生年月日を入力してください。'; chart.replaceChildren(); return; }
+        if (birth > currentDate) { $('#error').textContent = '未来の生年月日は計算できません。'; chart.replaceChildren(); return; }
+        const birthYear = birth.getFullYear();
+        const targetYear = Number(yearInput.value);
+        if (!Number.isInteger(targetYear) || targetYear < birthYear || targetYear > birthYear + 79) {
+          $('#error').textContent = `基準年は${birthYear}〜${birthYear + 79}年で入力してください。`;
+          chart.replaceChildren();
+          return;
+        }
+        $('#error').textContent = '';
+        const selected = sexDef(sexInput.value);
+        const periods = buildPeriods(birthYear, selected);
+        const currentStatus = statusFor(periods, currentYear);
+        const targetStatus = statusFor(periods, targetYear);
+        $('#age').textContent = `${currentYear - birthYear + 1}歳`;
+        $('#date').textContent = `${formatDate(currentDate)}時点`;
+        $('#status').textContent = currentStatus ? phases[currentStatus.phase] : '通常年';
+        $('#statusNote').textContent = currentStatus ? `${selected.label}・${currentStatus.honAge}歳本厄の周辺` : `${selected.label}・主な厄年には該当しません`;
+        $('#targetStatus').textContent = targetStatus ? phases[targetStatus.phase] : '通常年';
+        $('#targetNote').textContent = `${targetYear}年・数え${targetYear - birthYear + 1}歳・${selected.label}`;
+        $('#detail').textContent = `${selected.label}の判定を上に表示し、グラフでは同じ生まれ年の男性・女性を比較しています。`;
+        const width = Math.max(320, Math.floor(chartWrap.getBoundingClientRect().width));
+        if (view === 'near') drawMonthChart(birthYear, targetYear, width); else drawYearChart(birthYear, targetYear, width);
+      }
+      function update() { normalizeYear(); draw(); updateUrl(); }
+
+      yearInput.value = String(currentYear);
+      loadUrl();
+      normalizeYear();
+      draw();
+      birthInput.addEventListener('input', update);
+      sexInput.addEventListener('change', update);
+      yearInput.addEventListener('input', update);
+      buttons.forEach((button) => button.addEventListener('click', () => { setView(button.dataset.view); draw(); updateUrl(); }));
+      new ResizeObserver(draw).observe(chartWrap);
+      $('#share').addEventListener('click', async () => {
+        updateUrl();
+        try {
+          await navigator.clipboard.writeText(location.href);
+          $('#toast').textContent = 'URLをコピーしました';
+        } catch (error) {
+          $('#toast').textContent = 'アドレスバーのURLをコピーしてください';
+        }
+        $('#toast').classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 1800);
+      });
+    })();
+  </script>
+</body>
+</html>
