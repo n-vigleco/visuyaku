@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "visuyaku-proxy",
+  "account_id": "ed15ad697428cadcbd355fd42982c7eb",
   "compatibility_date": "2026-09-21",
   "routes": [
     {
