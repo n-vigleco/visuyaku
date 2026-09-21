@@ -9,4 +9,22 @@
 - `year=2026`
 - `view=1y`、`12y`、`80y`
 
-公開ファイルは `dist/` にあり、`main` ブランチへのpushでGitHub Pagesへデプロイされます。
+## Development
+
+```sh
+npm install
+npm run build
+```
+
+ソースは `site/index.html` にあります。ビルドすると、Cloudflare Workers Static Assets用に
+`dist/visuyaku/index.html` が生成されます。
+
+## Deployment
+
+Cloudflare Workers BuildsをGitHubリポジトリへ接続し、次のコマンドでデプロイします。
+
+```sh
+npm run deploy
+```
+
+Workerコードは実行せず、静的アセットとして `tmp.vigle.co/visuyaku/` から直接配信します。

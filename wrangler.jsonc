@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "visuyaku-proxy",
+  "compatibility_date": "2026-09-21",
+  "routes": [
+    {
+      "pattern": "tmp.vigle.co/visuyaku*",
+      "zone_name": "vigle.co"
+    }
+  ],
+  "assets": {
+    "directory": "./dist"
+  }
+}
