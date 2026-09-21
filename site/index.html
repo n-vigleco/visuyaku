@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="生まれ年から数え年の厄年を計算し、男性・女性の前厄、本厄、後厄を同じグラフで比較できます。">
+  <meta name="description" content="生まれ年から数え年の厄年を計算。ひとりでも複数人でも、前厄・本厄・後厄と連続期間をグラフで比較できます。">
   <meta name="theme-color" content="#0e786f">
   <title>visuyaku | 厄年を、見える形に。</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e786f'/%3E%3Cpath d='M13 20h38M13 32h38M13 44h38' stroke='%23fff' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23f2b544'/%3E%3C/svg%3E">
@@ -40,11 +40,25 @@
     .brand-copy { margin: 2px 0 0; color: var(--muted); font-size: 0.82rem; }
     .share-button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 0 14px; font-weight: 600; }
     .share-button:hover { background: var(--soft); }
-    .share-button:focus-visible, input:focus-visible, select:focus-visible, .range-button:focus-visible { outline: 3px solid rgba(14, 120, 111, 0.23); outline-offset: 2px; }
+    .share-button:focus-visible, input:focus-visible, select:focus-visible, .range-button:focus-visible, .mode-button:focus-visible, .add-person:focus-visible, .remove-person:focus-visible { outline: 3px solid rgba(14, 120, 111, 0.23); outline-offset: 2px; }
 
     .workspace { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
     .control-band { padding: 22px; border-bottom: 1px solid var(--line); }
+    .mode-control { display: inline-flex; padding: 3px; margin-bottom: 18px; border-radius: 7px; background: var(--soft); gap: 2px; }
+    .mode-button { min-height: 38px; border: 0; border-radius: 5px; padding: 0 16px; background: transparent; color: var(--muted); font-weight: 650; }
+    .mode-button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 5px rgba(28, 45, 41, 0.12); }
     .controls { display: grid; grid-template-columns: minmax(210px, 1.2fr) minmax(150px, 0.7fr) minmax(140px, 0.6fr); gap: 14px; }
+    .group-controls[hidden], .single-controls[hidden] { display: none; }
+    .group-list { display: grid; gap: 9px; }
+    .group-row { display: grid; grid-template-columns: 36px minmax(120px, 1fr) minmax(110px, 0.7fr) 44px; align-items: center; gap: 10px; }
+    .person-label { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--teal); color: #fff; font-weight: 700; }
+    .remove-person { width: 44px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); font-size: 1.25rem; }
+    .remove-person:hover { color: var(--ink); background: var(--soft); }
+    .group-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    .add-person { min-height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 13px; background: var(--surface); color: var(--ink); font-weight: 600; }
+    .add-person:disabled { cursor: not-allowed; opacity: 0.45; }
+    .group-hint { color: var(--muted); font-size: 0.78rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     label { display: grid; gap: 7px; color: var(--muted); font-size: 0.88rem; font-weight: 600; }
     input, select { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); padding: 9px 11px; }
     input:hover, select:hover { border-color: #aeb9b5; }
@@ -106,6 +120,9 @@
       .masthead { align-items: flex-start; }
       .brand-copy { display: none; }
       .controls, .result-strip { grid-template-columns: 1fr; }
+      .mode-control { width: 100%; }
+      .mode-button { flex: 1; }
+      .group-row { grid-template-columns: 34px minmax(0, 1fr) minmax(96px, 0.7fr) 44px; gap: 7px; }
       .result + .result { border-left: 0; border-top: 1px solid var(--line); }
       .control-band, .chart-section { padding: 18px; }
       .result { padding: 15px 18px; }
@@ -120,6 +137,8 @@
       .workspace { border-width: 0; border-radius: 0; box-shadow: none; }
       .share-button { padding-inline: 11px; }
       .control-band, .chart-section { padding: 16px 12px; }
+      .group-row { grid-template-columns: 32px minmax(0, 1fr) 92px 40px; gap: 6px; }
+      .remove-person { width: 40px; }
     }
   </style>
 </head>
@@ -135,18 +154,30 @@
 
     <section class="workspace" aria-label="厄年計算機">
       <div class="control-band">
-        <div class="controls">
+        <div class="mode-control" role="group" aria-label="計算モード">
+          <button class="mode-button" type="button" aria-pressed="true" data-mode="single">ひとり</button>
+          <button class="mode-button" type="button" aria-pressed="false" data-mode="group">複数人</button>
+        </div>
+        <div id="singleControls" class="controls single-controls">
           <label>生まれ年<input id="birthyear" type="number" inputmode="numeric" value="1990"></label>
           <label>本人の性別<select id="sex"><option value="male">男性</option><option value="female">女性</option></select></label>
           <label>基準年<input id="targetYear" type="number" inputmode="numeric" value="2026"></label>
+        </div>
+        <div id="groupControls" class="group-controls" hidden>
+          <div id="groupList" class="group-list"></div>
+          <div class="group-actions">
+            <button id="addPerson" class="add-person" type="button">＋ 人を追加</button>
+            <span class="group-hint">最大10人・名前の入力は不要です</span>
+          </div>
+          <label style="margin-top: 14px; max-width: 240px;">基準年<input id="groupTargetYear" type="number" inputmode="numeric" value="2026"></label>
         </div>
         <p id="error" class="error" role="alert"></p>
       </div>
 
       <div class="result-strip" aria-live="polite">
-        <div class="result"><div class="result-label">現在の数え年</div><div id="age" class="result-value">-</div><div id="date" class="result-note">-</div></div>
-        <div class="result"><div class="result-label">現在地</div><div id="status" class="result-value">-</div><div id="statusNote" class="result-note">-</div></div>
-        <div class="result"><div class="result-label">基準年の判定</div><div id="targetStatus" class="result-value">-</div><div id="targetNote" class="result-note">-</div></div>
+        <div class="result"><div id="metric1Label" class="result-label">現在の数え年</div><div id="age" class="result-value">-</div><div id="date" class="result-note">-</div></div>
+        <div class="result"><div id="metric2Label" class="result-label">現在地</div><div id="status" class="result-value">-</div><div id="statusNote" class="result-note">-</div></div>
+        <div class="result"><div id="metric3Label" class="result-label">基準年の判定</div><div id="targetStatus" class="result-value">-</div><div id="targetNote" class="result-note">-</div></div>
       </div>
 
       <div class="chart-section">
@@ -158,7 +189,7 @@
           </div>
           <div id="rangeLabel" class="range-label">-</div>
         </div>
-        <div class="chart-heading"><h2>男女の厄年タイムライン</h2><span id="unitLabel" class="chart-caption">月単位</span></div>
+        <div class="chart-heading"><h2 id="chartHeading">男女の厄年タイムライン</h2><span id="unitLabel" class="chart-caption">月単位</span></div>
         <div id="chartWrap" class="chart-wrap"><svg id="chart" role="img" aria-labelledby="chartTitle chartDesc"></svg></div>
         <div class="legend" aria-label="凡例">
           <span class="legend-item"><span class="swatch swatch-mae"></span>前厄</span>
@@ -172,7 +203,7 @@
 
       <footer class="notes">
         <p>厄年は誕生日ではなく、数え年に基づいて生まれ年単位で判定します。時期や年齢の扱いは地域・神社・寺院によって異なるため、お参り先の案内もあわせてご確認ください。</p>
-        <p class="url-params"><code>?birthyear=&amp;sex=&amp;year=&amp;view=</code></p>
+        <p class="url-params"><code>?mode=&amp;birthyear=/people=&amp;year=&amp;view=</code></p>
       </footer>
     </section>
   </main>
@@ -184,12 +215,17 @@
       const birthInput = $('#birthyear');
       const sexInput = $('#sex');
       const yearInput = $('#targetYear');
+      const groupYearInput = $('#groupTargetYear');
+      const groupList = $('#groupList');
       const chart = $('#chart');
       const chartWrap = $('#chartWrap');
       const buttons = [...document.querySelectorAll('[data-view]')];
+      const modeButtons = [...document.querySelectorAll('[data-mode]')];
       const today = new Date();
       const currentYear = today.getFullYear();
       let view = 'near';
+      let mode = 'single';
+      let groupPeople = [];
       let toastTimer;
 
       const sexes = [
@@ -213,9 +249,71 @@
         ]);
       }
       function statusFor(periods, year) { return periods.find((item) => item.year === year) || null; }
+      function personLabel(index) { return String.fromCharCode(65 + index); }
+      function validBirthYear(value) {
+        const year = Number(value);
+        return Number.isInteger(year) && year >= currentYear - 120 && year <= currentYear ? year : null;
+      }
+      function groupEntries() {
+        return groupPeople.map((person, index) => ({
+          label: personLabel(index),
+          birthYear: validBirthYear(person.birthyear),
+          sex: person.sex
+        })).filter((person) => person.birthYear !== null);
+      }
       function setView(next) {
         view = viewAliases[next] || 'near';
         buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+      }
+      function setMode(next) {
+        mode = next === 'group' ? 'group' : 'single';
+        $('#singleControls').hidden = mode !== 'single';
+        $('#groupControls').hidden = mode !== 'group';
+        modeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.mode === mode)));
+      }
+      function renderGroupRows() {
+        groupList.replaceChildren();
+        groupPeople.forEach((person, index) => {
+          const row = document.createElement('div');
+          row.className = 'group-row';
+
+          const badge = document.createElement('span');
+          badge.className = 'person-label';
+          badge.textContent = personLabel(index);
+
+          const birth = document.createElement('input');
+          birth.type = 'number';
+          birth.inputMode = 'numeric';
+          birth.min = String(currentYear - 120);
+          birth.max = String(currentYear);
+          birth.placeholder = '生まれ年';
+          birth.value = person.birthyear;
+          birth.setAttribute('aria-label', `${personLabel(index)}の生まれ年`);
+          birth.addEventListener('input', () => { person.birthyear = birth.value; update(); });
+
+          const sex = document.createElement('select');
+          sex.setAttribute('aria-label', `${personLabel(index)}の性別`);
+          sex.append(new Option('男性', 'male'), new Option('女性', 'female'));
+          sex.value = person.sex;
+          sex.addEventListener('change', () => { person.sex = sex.value; update(); });
+
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'remove-person';
+          remove.textContent = '×';
+          remove.title = `${personLabel(index)}を削除`;
+          remove.setAttribute('aria-label', `${personLabel(index)}を削除`);
+          remove.disabled = groupPeople.length === 1;
+          remove.addEventListener('click', () => {
+            groupPeople.splice(index, 1);
+            renderGroupRows();
+            update();
+          });
+
+          row.append(badge, birth, sex, remove);
+          groupList.append(row);
+        });
+        $('#addPerson').disabled = groupPeople.length >= 10;
       }
       function loadUrl() {
         const params = new URLSearchParams(location.search);
@@ -226,27 +324,54 @@
         if (birth) birthInput.value = birth;
         if (['male', 'm', '男性'].includes(sex)) sexInput.value = 'male';
         if (['female', 'f', '女性'].includes(sex)) sexInput.value = 'female';
-        if (yearRaw !== null && Number.isInteger(Number(yearRaw))) yearInput.value = yearRaw;
+        if (yearRaw !== null && Number.isInteger(Number(yearRaw))) {
+          yearInput.value = yearRaw;
+          groupYearInput.value = yearRaw;
+        }
+        const parsedPeople = (params.get('people') || '').split(',').map((value) => {
+          const match = value.match(/^(\d{4})([mf])$/);
+          return match ? { birthyear: match[1], sex: match[2] === 'f' ? 'female' : 'male' } : null;
+        }).filter(Boolean).slice(0, 10);
+        groupPeople = parsedPeople.length ? parsedPeople : [
+          { birthyear: birthInput.value, sex: sexInput.value },
+          { birthyear: '', sex: 'male' },
+          { birthyear: '', sex: 'male' }
+        ];
+        while (groupPeople.length < 3) groupPeople.push({ birthyear: '', sex: 'male' });
+        if (params.get('mode') === 'group' || parsedPeople.length) mode = 'group';
         if (viewAliases[params.get('view')]) setView(params.get('view'));
       }
       function updateUrl() {
         const url = new URL(location.href);
-        url.searchParams.set('birthyear', birthInput.value);
         url.searchParams.delete('birthdate');
         url.searchParams.delete('dob');
-        url.searchParams.set('sex', sexInput.value);
-        url.searchParams.set('year', yearInput.value);
+        if (mode === 'group') {
+          const people = groupEntries().map((person) => `${person.birthYear}${person.sex === 'female' ? 'f' : 'm'}`);
+          url.searchParams.set('mode', 'group');
+          if (people.length) url.searchParams.set('people', people.join(',')); else url.searchParams.delete('people');
+          url.searchParams.delete('birthyear');
+          url.searchParams.delete('sex');
+          url.searchParams.set('year', groupYearInput.value);
+        } else {
+          url.searchParams.delete('mode');
+          url.searchParams.delete('people');
+          url.searchParams.set('birthyear', birthInput.value);
+          url.searchParams.set('sex', sexInput.value);
+          url.searchParams.set('year', yearInput.value);
+        }
         url.searchParams.set('view', view === 'near' ? '1y' : view === 'wide' ? '12y' : '80y');
         history.replaceState(null, '', url);
       }
       function normalizeYear() {
-        const min = Number(birthInput.value);
-        if (!Number.isInteger(min)) return;
-        const max = min + 79;
-        yearInput.min = min;
-        yearInput.max = max;
-        const value = Number(yearInput.value);
-        if (!Number.isInteger(value) || value < min || value > max) yearInput.value = String(Math.min(max, Math.max(min, currentYear)));
+        const years = mode === 'group' ? groupEntries().map((person) => person.birthYear) : [validBirthYear(birthInput.value)].filter((year) => year !== null);
+        if (!years.length) return;
+        const min = Math.min(...years);
+        const max = Math.max(...years) + 79;
+        const input = mode === 'group' ? groupYearInput : yearInput;
+        input.min = min;
+        input.max = max;
+        const value = Number(input.value);
+        if (!Number.isInteger(value) || value < min || value > max) input.value = String(Math.min(max, Math.max(min, currentYear)));
       }
       function svgEl(name, attrs, text) {
         const node = document.createElementNS('http://www.w3.org/2000/svg', name);
@@ -317,11 +442,11 @@
         const span = maxYear - minYear;
         const raw = Math.ceil(span / ((width < 520 ? 4 : 8) - 1));
         const step = [1, 2, 5, 10, 20].find((value) => value >= raw) || 20;
-        const ticks = [];
-        for (let year = Math.ceil(minYear / step) * step; year <= maxYear; year += step) ticks.push(year);
-        if (!ticks.includes(minYear)) ticks.unshift(minYear);
-        if (!ticks.includes(maxYear)) ticks.push(maxYear);
-        return ticks;
+        const innerTicks = [];
+        for (let year = Math.ceil(minYear / step) * step; year <= maxYear; year += step) innerTicks.push(year);
+        if (innerTicks[0] - minYear < step * 0.6) innerTicks.shift();
+        if (maxYear - innerTicks.at(-1) < step * 0.6) innerTicks.pop();
+        return [minYear, ...innerTicks, maxYear];
       }
 
       function drawYearChart(birthYear, targetYear, width) {
@@ -373,7 +498,143 @@
         $('#unitLabel').textContent = '年単位';
       }
 
-      function draw() {
+      function buildStreaks(entries) {
+        const years = [...new Set(entries.flatMap((person) => buildPeriods(person.birthYear, sexDef(person.sex)).map((period) => period.year)))].sort((a, b) => a - b);
+        return years.reduce((streaks, year) => {
+          const last = streaks.at(-1);
+          if (last && year === last.end + 1) {
+            last.end = year;
+            last.length += 1;
+          } else {
+            streaks.push({ start: year, end: year, length: 1 });
+          }
+          return streaks;
+        }, []);
+      }
+
+      function relevantStreak(streaks, targetYear) {
+        return streaks.find((streak) => targetYear >= streak.start && targetYear <= streak.end)
+          || streaks.find((streak) => streak.start > targetYear)
+          || streaks.at(-1)
+          || null;
+      }
+
+      function activePeople(entries, year) {
+        return entries.map((person) => ({ ...person, period: statusFor(buildPeriods(person.birthYear, sexDef(person.sex)), year) }))
+          .filter((person) => person.period);
+      }
+
+      function drawGroupMonthChart(entries, targetYear, width) {
+        const compact = width < 520;
+        const margin = { top: 42, right: 16, bottom: 62, left: compact ? 58 : 72 };
+        const rowHeight = 50;
+        const plotHeight = entries.length * rowHeight + 8;
+        const height = margin.top + plotHeight + margin.bottom;
+        const innerWidth = width - margin.left - margin.right;
+        const startYear = targetYear - 1;
+        const monthWidth = innerWidth / 36;
+        const xMonth = (year, month) => margin.left + ((year - startYear) * 12 + month) * monthWidth;
+        chart.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        chart.replaceChildren();
+        chart.append(svgEl('title', { id: 'chartTitle' }, '複数人の厄年タイムライン'));
+        chart.append(svgEl('desc', { id: 'chartDesc' }, `${startYear}年1月から${targetYear + 1}年12月まで、${entries.length}人の厄年を月単位で表示します。`));
+        chart.append(svgEl('rect', { x: xMonth(targetYear, 0), y: margin.top, width: monthWidth * 12, height: plotHeight, class: 'target-band' }));
+        chart.append(svgEl('rect', { x: margin.left, y: margin.top, width: innerWidth, height: plotHeight, class: 'plot-frame' }));
+
+        for (let index = 0; index <= 36; index += 1) {
+          const x = margin.left + index * monthWidth;
+          const isYear = index % 12 === 0;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top, y2: margin.top + plotHeight, class: isYear ? 'year-line' : 'grid-line' }));
+          if (index < 36) {
+            const month = index % 12;
+            const year = startYear + Math.floor(index / 12);
+            const showMonth = compact ? month === 0 || month === 6 : month % 3 === 0;
+            if (showMonth) chart.append(svgEl('text', { x: x + monthWidth / 2, y: height - 31, 'text-anchor': 'middle', class: 'svg-muted' }, month === 0 ? `${year}年` : `${month + 1}月`));
+          }
+        }
+
+        entries.forEach((person, index) => {
+          const y = margin.top + index * rowHeight + 8;
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 13, 'text-anchor': 'end', class: 'svg-label-strong' }, person.label));
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 28, 'text-anchor': 'end', class: 'svg-label-small' }, `${person.birthYear}年生`));
+          buildPeriods(person.birthYear, sexDef(person.sex)).filter((period) => period.year >= startYear && period.year <= targetYear + 1).forEach((period) => {
+            const tooltip = `${person.label}・${person.birthYear}年生・${sexDef(person.sex).label} ${period.year}年: 数え${period.age}歳 ${phases[period.phase]}`;
+            chart.append(appendTitle(svgEl('rect', { x: xMonth(period.year, 0) + 1, y, width: monthWidth * 12 - 2, height: 34, rx: 3, class: phaseClass[period.phase] }), tooltip));
+            if (monthWidth * 12 >= 64) {
+              chart.append(svgEl('text', { x: xMonth(period.year, 6), y: y + 14, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phases[period.phase]));
+              chart.append(svgEl('text', { x: xMonth(period.year, 6), y: y + 27, 'text-anchor': 'middle', class: 'svg-label-small', 'pointer-events': 'none' }, `（${person.birthYear}年生）`));
+            }
+          });
+        });
+
+        const targetX = xMonth(targetYear, 0);
+        chart.append(svgEl('line', { x1: targetX, x2: targetX, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'target-line' }));
+        chart.append(svgEl('text', { x: targetX + 6, y: margin.top - 17, 'text-anchor': 'start', class: 'svg-label-strong' }, `基準年 ${targetYear}`));
+        if (currentYear >= startYear && currentYear <= targetYear + 1) {
+          const dayFraction = (today.getDate() - 1) / new Date(currentYear, today.getMonth() + 1, 0).getDate();
+          const currentX = xMonth(currentYear, today.getMonth() + dayFraction);
+          chart.append(svgEl('line', { x1: currentX, x2: currentX, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'current-line' }));
+          chart.append(svgEl('text', { x: Math.min(width - margin.right, currentX + 6), y: margin.top + plotHeight + 17, 'text-anchor': currentX > width - margin.right - 38 ? 'end' : 'start', class: 'svg-muted' }, '今日'));
+        }
+        chart.append(svgEl('text', { x: margin.left + innerWidth / 2, y: height - 5, 'text-anchor': 'middle', class: 'axis-title' }, '年月'));
+        $('#rangeLabel').textContent = `${startYear}年1月〜${targetYear + 1}年12月`;
+        $('#unitLabel').textContent = '月単位';
+      }
+
+      function drawGroupYearChart(entries, targetYear, width) {
+        const compact = width < 520;
+        const margin = { top: 42, right: 16, bottom: 58, left: compact ? 58 : 72 };
+        const rowHeight = 50;
+        const plotHeight = entries.length * rowHeight + 8;
+        const height = margin.top + plotHeight + margin.bottom;
+        const innerWidth = width - margin.left - margin.right;
+        const minBirth = Math.min(...entries.map((person) => person.birthYear));
+        const maxBirth = Math.max(...entries.map((person) => person.birthYear));
+        const minYear = view === 'wide' ? targetYear - 12 : minBirth;
+        const maxYear = view === 'wide' ? targetYear + 12 : maxBirth + 79;
+        const count = maxYear - minYear + 1;
+        const yearWidth = innerWidth / count;
+        const xYear = (year) => margin.left + (year - minYear) * yearWidth;
+        chart.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        chart.replaceChildren();
+        chart.append(svgEl('title', { id: 'chartTitle' }, '複数人の厄年タイムライン'));
+        chart.append(svgEl('desc', { id: 'chartDesc' }, `${minYear}年から${maxYear}年まで、${entries.length}人の厄年を比較します。`));
+        if (targetYear >= minYear && targetYear <= maxYear) chart.append(svgEl('rect', { x: xYear(targetYear), y: margin.top, width: yearWidth, height: plotHeight, class: 'target-band' }));
+        chart.append(svgEl('rect', { x: margin.left, y: margin.top, width: innerWidth, height: plotHeight, class: 'plot-frame' }));
+        yearTicks(minYear, maxYear, width).forEach((year) => {
+          const x = xYear(year) + yearWidth / 2;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top, y2: margin.top + plotHeight, class: 'grid-line' }));
+          chart.append(svgEl('text', { x, y: height - 28, 'text-anchor': year === minYear ? 'start' : year === maxYear ? 'end' : 'middle', class: 'svg-muted' }, String(year)));
+        });
+
+        entries.forEach((person, index) => {
+          const y = margin.top + index * rowHeight + 8;
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 13, 'text-anchor': 'end', class: 'svg-label-strong' }, person.label));
+          chart.append(svgEl('text', { x: margin.left - 10, y: y + 28, 'text-anchor': 'end', class: 'svg-label-small' }, `${person.birthYear}年生`));
+          buildPeriods(person.birthYear, sexDef(person.sex)).filter((period) => period.year >= minYear && period.year <= maxYear).forEach((period) => {
+            const rectWidth = Math.max(2, yearWidth - Math.min(2, yearWidth * 0.12));
+            const tooltip = `${person.label}・${person.birthYear}年生・${sexDef(person.sex).label} ${period.year}年: 数え${period.age}歳 ${phases[period.phase]}`;
+            chart.append(appendTitle(svgEl('rect', { x: xYear(period.year) + Math.min(1, yearWidth * 0.06), y, width: rectWidth, height: 34, rx: Math.min(3, rectWidth / 3), class: phaseClass[period.phase] }), tooltip));
+            if (yearWidth >= 25) chart.append(svgEl('text', { x: xYear(period.year) + yearWidth / 2, y: y + 22, 'text-anchor': 'middle', class: 'svg-label', 'pointer-events': 'none' }, phaseShort[period.phase]));
+          });
+        });
+
+        if (targetYear >= minYear && targetYear <= maxYear) {
+          const x = xYear(targetYear) + yearWidth / 2;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'target-line' }));
+          chart.append(svgEl('text', { x: Math.min(width - margin.right, x + 5), y: margin.top - 17, 'text-anchor': x > width - margin.right - 44 ? 'end' : 'start', class: 'svg-label-strong' }, '基準年'));
+        }
+        if (currentYear !== targetYear && currentYear >= minYear && currentYear <= maxYear) {
+          const x = xYear(currentYear) + yearWidth / 2;
+          chart.append(svgEl('line', { x1: x, x2: x, y1: margin.top - 10, y2: margin.top + plotHeight, class: 'current-line' }));
+          chart.append(svgEl('text', { x: Math.min(width - margin.right, x + 5), y: margin.top + plotHeight + 17, 'text-anchor': x > width - margin.right - 32 ? 'end' : 'start', class: 'svg-muted' }, '今年'));
+        }
+        chart.append(svgEl('text', { x: margin.left + innerWidth / 2, y: height - 5, 'text-anchor': 'middle', class: 'axis-title' }, '西暦（年）'));
+        $('#rangeLabel').textContent = `${minYear}〜${maxYear}年`;
+        $('#unitLabel').textContent = '年単位';
+      }
+
+      function drawSingle() {
         const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const birthYear = Number(birthInput.value);
         if (!Number.isInteger(birthYear)) { $('#error').textContent = '生まれ年を入力してください。'; chart.replaceChildren(); return; }
@@ -390,6 +651,10 @@
         const periods = buildPeriods(birthYear, selected);
         const currentStatus = statusFor(periods, currentYear);
         const targetStatus = statusFor(periods, targetYear);
+        $('#metric1Label').textContent = '現在の数え年';
+        $('#metric2Label').textContent = '現在地';
+        $('#metric3Label').textContent = '基準年の判定';
+        $('#chartHeading').textContent = '男女の厄年タイムライン';
         $('#age').textContent = `${currentYear - birthYear + 1}歳`;
         $('#date').textContent = `${formatDate(currentDate)}時点`;
         $('#status').textContent = currentStatus ? phases[currentStatus.phase] : '通常年';
@@ -400,17 +665,93 @@
         const width = Math.max(320, Math.floor(chartWrap.getBoundingClientRect().width));
         if (view === 'near') drawMonthChart(birthYear, targetYear, width); else drawYearChart(birthYear, targetYear, width);
       }
+
+      function drawGroup() {
+        const invalid = groupPeople.some((person) => person.birthyear !== '' && validBirthYear(person.birthyear) === null);
+        const entries = groupEntries();
+        if (invalid) {
+          $('#error').textContent = `生まれ年は${currentYear - 120}〜${currentYear}年で入力してください。`;
+          chart.replaceChildren();
+          return;
+        }
+        if (!entries.length) {
+          $('#error').textContent = '1人以上の生まれ年を入力してください。';
+          chart.replaceChildren();
+          $('#age').textContent = '0人';
+          $('#date').textContent = 'Aから入力できます';
+          $('#status').textContent = '-';
+          $('#statusNote').textContent = '生まれ年と性別を入力してください';
+          $('#targetStatus').textContent = '-';
+          $('#targetNote').textContent = '連続期間を自動計算します';
+          return;
+        }
+        const targetYear = Number(groupYearInput.value);
+        const minYear = Math.min(...entries.map((person) => person.birthYear));
+        const maxYear = Math.max(...entries.map((person) => person.birthYear)) + 79;
+        if (!Number.isInteger(targetYear) || targetYear < minYear || targetYear > maxYear) {
+          $('#error').textContent = `基準年は${minYear}〜${maxYear}年で入力してください。`;
+          chart.replaceChildren();
+          return;
+        }
+
+        $('#error').textContent = '';
+        const targetActive = activePeople(entries, targetYear);
+        const currentActive = activePeople(entries, currentYear);
+        const streak = relevantStreak(buildStreaks(entries), targetYear);
+        const births = entries.map((person) => person.birthYear);
+        const targetSummary = targetActive.length
+          ? targetActive.map((person) => `${person.label} ${phases[person.period.phase]}`).join('・')
+          : '該当者はいません';
+        const currentSummary = currentActive.length
+          ? currentActive.map((person) => `${person.label} ${phases[person.period.phase]}`).join('・')
+          : '今年の該当者はいません';
+
+        $('#metric1Label').textContent = '登録人数';
+        $('#metric2Label').textContent = '基準年の乗車';
+        $('#metric3Label').textContent = '厄年リレー';
+        $('#age').textContent = `${entries.length}人`;
+        $('#date').textContent = `${Math.min(...births)}〜${Math.max(...births)}年生`;
+        $('#status').textContent = `${targetActive.length}人`;
+        $('#statusNote').textContent = `${targetYear}年・${targetSummary}`;
+        $('#targetStatus').textContent = streak ? `${streak.length}年間` : '-';
+        $('#targetNote').textContent = streak ? `${streak.start}〜${streak.end}年` : '該当期間なし';
+        $('#chartHeading').textContent = 'みんなの厄年タイムライン';
+        $('#detail').textContent = `${currentYear}年は${currentSummary}。色が途切れず続く期間を「厄年リレー」として表示しています。`;
+        const width = Math.max(320, Math.floor(chartWrap.getBoundingClientRect().width));
+        if (view === 'near') drawGroupMonthChart(entries, targetYear, width); else drawGroupYearChart(entries, targetYear, width);
+      }
+
+      function draw() { if (mode === 'group') drawGroup(); else drawSingle(); }
       function update() { normalizeYear(); draw(); updateUrl(); }
 
       yearInput.value = String(currentYear);
+      groupYearInput.value = String(currentYear);
       birthInput.min = String(currentYear - 120);
       birthInput.max = String(currentYear);
       loadUrl();
+      setMode(mode);
+      renderGroupRows();
       normalizeYear();
       draw();
+      updateUrl();
       birthInput.addEventListener('input', update);
       sexInput.addEventListener('change', update);
       yearInput.addEventListener('input', update);
+      groupYearInput.addEventListener('input', update);
+      modeButtons.forEach((button) => button.addEventListener('click', () => {
+        if (button.dataset.mode === mode) return;
+        if (button.dataset.mode === 'group') groupYearInput.value = yearInput.value;
+        else yearInput.value = groupYearInput.value;
+        setMode(button.dataset.mode);
+        normalizeYear();
+        draw();
+        updateUrl();
+      }));
+      $('#addPerson').addEventListener('click', () => {
+        if (groupPeople.length >= 10) return;
+        groupPeople.push({ birthyear: '', sex: 'male' });
+        renderGroupRows();
+      });
       buttons.forEach((button) => button.addEventListener('click', () => { setView(button.dataset.view); draw(); updateUrl(); }));
       new ResizeObserver(draw).observe(chartWrap);
       $('#share').addEventListener('click', async () => {
